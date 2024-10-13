@@ -1,1 +1,6 @@
-/vranov_sk_csv
+# Ignore everything in this directory
+*
+
+# Except these files
+!.gitignore
+!*.py
