@@ -22,6 +22,7 @@ url = 'https://www.vranov.sk/Transparentne-mesto/strana-{page}.html?&action=expo
 from_page = 1 # Start page
 to_page = 20 # End page
 
+
 folder_name = 'vranov_sk_csv' # Folder for the CSV files
 saved_file_name = 'vranov_sk_page-{page}.csv' # File name for the CSV files
 max_workers = 10 # Number of threads to use for downloading
