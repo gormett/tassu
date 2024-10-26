@@ -5,6 +5,8 @@ import time
 from datetime import datetime
 import csv
 
+choice = input("Enter 'links' to scrape links, 'details' to scrape contract details, or 'both' to run both: ").strip().lower()
+
 # Step 1: Load the CSV with list of customers
 df = pd.read_csv('obce_VT.csv')
 
@@ -91,63 +93,62 @@ def get_contracts_links(customer):
 
 		return contracts_links
 
-# Step 4: Iterate over each customer and store the results
-all_customers_data = []
+# # Step 4: Iterate over each customer and store the results
+# all_customers_data = []
 
-for customer in df['Obec']:
-	contracts_links = get_contracts_links(customer)
-	if contracts_links:
-		for link in contracts_links:
-			all_customers_data.append({'Obec': customer, 'contract_link': link})
+# for customer in df['Obec']:
+# 	contracts_links = get_contracts_links(customer)
+# 	if contracts_links:
+# 		for link in contracts_links:
+# 			all_customers_data.append({'Obec': customer, 'contract_link': link})
 
-# Save all customers' contract links to a CSV file with pipe delimiter
-all_customers_df = pd.DataFrame(all_customers_data)
-all_customers_df.to_csv('all_links_to_contracts.csv', index=False, sep='|')
-print(f"Saved all customers' contract links to all_links_to_contracts.csv")
+# # Save all customers' contract links to a CSV file with pipe delimiter
+# all_customers_df = pd.DataFrame(all_customers_data)
+# all_customers_df.to_csv('all_links_to_contracts.csv', index=False, sep='|')
+# print(f"Saved all customers' contract links to all_links_to_contracts.csv")
 
 
 # Step 5: Iterate over each contract link and scrape the contract details
-def scrape_contract_details(contract_link):
-			# Load the CSV with all contract links
-	all_links_df = pd.read_csv('all_links_to_contracts.csv', delimiter='|')
-	
-	for index, row in all_links_df.iterrows():
-		contract_link = row['contract_link']
-		print(f"Scraping contract details for: {contract_link}")
-		request_count = 0
-		start_time = time.time()
-		
-		
-
-		# Apply rate limiting
-		rate_limit(request_count, start_time)
-		request_count += 1
-
+def scrape_contract_details(contract_link, obec):
 		try:
 				response = requests.get(contract_link)
-				response.raise_for_status()  # Raise exception if request fails
+				response.raise_for_status()
 		except requests.RequestException as e:
 				print(f"Error fetching contract details for {contract_link}: {e}")
 				return None
 
-		response_text = response.text
-		
-		soup = BeautifulSoup(response_text, 'html.parser')
-							
-		# Extract contract details
-		contract_details = {}
+		soup = BeautifulSoup(response.text, 'html.parser')
+		# contract_details = {}
+		contract_details = {
+				'Obec': obec,
+				'Link': contract_link,
+		}
 
 		# Extract contract details
 		contract_details['Typ'] = soup.find('strong', string='Typ:').find_next('span').text
-		contract_details['Č. zmluvy'] = soup.find('strong', string='Č. zmluvy:').find_next('span').text
+		contract_number_element = soup.find('strong', string='Č. zmluvy:')
+		if contract_number_element:
+				contract_details['Č. zmluvy'] = contract_number_element.find_next('span').text
+		else:
+				contract_details['Č. zmluvy'] = None
 		contract_details['Rezort'] = soup.find('strong', string='Rezort:').find_next('span').text
 		contract_details['Objednávateľ'] = soup.find('strong', string='Objednávateľ:').find_next('span').get_text(separator=", ").strip()
-		contract_details['Objednávateľ IČO'] = soup.find('strong', string='IČO:').find_next('span').text
+		# contract_details['Objednávateľ IČO'] = soup.find('strong', string='IČO:').find_next('span').text
 		contract_details['Dodávateľ'] = soup.find('strong', string='Dodávateľ:').find_next('span').get_text(separator=", ").strip()
-		contract_details['Dodávateľ IČO'] = soup.find_all('strong', string='IČO:')[1].find_next('span').text  # Second occurrence of IČO
+		# contract_details['Dodávateľ IČO'] = soup.find_all('strong', string='IČO:')[1].find_next('span').text  # Second occurrence of IČO
+				# Find all instances of "IČO" and handle cases with single or multiple entries
+		ico_elements = soup.find_all('strong', string='IČO:')
+		if len(ico_elements) > 0:
+				contract_details['Objednávateľ IČO'] = ico_elements[0].find_next('span').text
+		if len(ico_elements) > 1:
+				contract_details['Dodávateľ IČO'] = ico_elements[1].find_next('span').text
+		else:
+				contract_details['Dodávateľ IČO'] = None  # Handle missing second "IČO"
+
+		
 		contract_details['Názov zmluvy'] = soup.find('strong', string='Názov zmluvy:').find_next('span').text
 		contract_details['ID zmluvy'] = soup.find('strong', string='ID zmluvy:').find_next('span').text
-		
+		contract_details['Zverejnil'] = soup.find('strong', string='Zverejnil:').find_next('span').text
 		# Extract Verejné obstarávanie link if it exists
 		verejne_obstaravanie_element = soup.find('strong', string='Verejné obstarávanie:')
 		if verejne_obstaravanie_element:
@@ -174,28 +175,71 @@ def scrape_contract_details(contract_link):
 		return contract_details
 
 # Step 6: Iterate over all contract links and scrape the details and save the detials to a CSV file
-all_contracts_data = []
+# all_contracts_data = []
 
-for index, row in all_customers_df.iterrows():
-		link = row['contract_link']
-		obec = row['Obec']
-		contract_details = scrape_contract_details(link)
-		if contract_details:
-				contract_details['Obec'] = obec
-				contract_details['Link'] = link
-				all_contracts_data.append(contract_details)
+# for index, row in all_customers_df.iterrows():
+# 		link = row['contract_link']
+# 		obec = row['Obec']
+# 		contract_details = scrape_contract_details(link)
+# 		if contract_details:
+# 				contract_details['Obec'] = obec
+# 				contract_details['Link'] = link
+# 				all_contracts_data.append(contract_details)
 
+# Main logic based on user choice
+if choice in ('links', 'both'):
+		df = pd.read_csv('obce_VT.csv')
+		all_links = []
+		for customer in df['Obec']:
+				customer_links = get_contracts_links(customer)
+				all_links.extend(customer_links)
+		
+		if all_links:
+				links_df = pd.DataFrame(all_links, columns=['Obec', 'contract_link'])
+				links_df.to_csv('all_links_to_contracts.csv', index=False, sep='|')
+				print("Saved all links to 'all_links_to_contracts.csv'.")
+
+if choice in ('details', 'both'):
+		if choice == 'details':
+				all_links_df = pd.read_csv('all_links_to_contracts.csv', delimiter='|')
+		else:
+				all_links_df = pd.DataFrame(all_links, columns=['Obec', 'contract_link'])
+		
 # Define the headers for the CSV file
 headers = [
 		'Obec', 'Link', 'Typ', 'Č. zmluvy', 'Rezort', 'Objednávateľ', 'Objednávateľ IČO', 
-		'Dodávateľ', 'Dodávateľ IČO', 'Názov zmluvy', 'ID zmluvy', 'Dátum zverejnenia', 
+		'Dodávateľ', 'Dodávateľ IČO', 'Názov zmluvy', 'ID zmluvy', 'Zverejnil', 'Verejné obstarávanie', 'Dátum zverejnenia', 
 		'Dátum uzavretia', 'Dátum účinnosti', 'Dátum platnosti do', 'Zmluvne dohodnutá čiastka', 
 		'Celková čiastka'
 ]
 
-# Save all contracts' details to a CSV file with pipe delimiter
-all_contracts_df = pd.DataFrame(all_contracts_data)
-all_contracts_df = all_contracts_df.reindex(columns=headers)
-all_contracts_df.to_csv('all_contracts_data.csv', index=False, sep='|')
+# # Save all contracts' details to a CSV file with pipe delimiter
+# all_contracts_df = pd.DataFrame(all_contracts_data)
+# all_contracts_df = all_contracts_df.reindex(columns=headers)
+# all_contracts_df.to_csv('all_contracts_data.csv', index=False, sep='|')
 
-print(f"Saved all contracts' details to all_contracts_data.csv")
+# print(f"Saved all contracts' details to all_contracts_data.csv")
+all_links_df = pd.read_csv('all_links_to_contracts.csv', delimiter='|')
+
+# Open the ongoing CSV for appending contract details
+with open('all_contracts_ongoing.csv', 'a', newline='', encoding='utf-8') as csvfile:
+	writer = csv.DictWriter(csvfile, fieldnames=headers, delimiter='|')
+	
+	# Write headers if the file is empty
+	if csvfile.tell() == 0:
+		writer.writeheader()
+
+	for index, row in all_links_df.iterrows():
+		contract_link = row['contract_link']
+		obec = row['Obec']
+		print(f"Scraping contract details for: {contract_link}")
+		
+		# Apply rate limiting if necessary
+		rate_limit(index, time.time())
+		
+		# Scrape contract details
+		contract_details = scrape_contract_details(contract_link, obec)
+		if contract_details:
+			# Append to CSV immediately
+			writer.writerow(contract_details)
+			print(f"Saved details for {contract_link} into all_contracts_ongoing.csv")
