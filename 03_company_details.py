@@ -56,21 +56,29 @@ with open(company_output_file, 'w', newline='', encoding='utf-8') as company_csv
 
     # Function to parse and save company data
     def save_company_data(data):
-        address = data.get('addresses', [{}])[0]
+    # Safe extraction with fallback for all fields
         company = {
-            'id': data.get('id'),
-            'identifier': data.get('identifiers', [{}])[0].get('value', ''),
-            'fullName': data.get('fullNames', [{}])[0].get('value', ''),
-            'otherNames': ", ".join(name.get('value', '') for name in data.get('otherNames', [])),
-            'legalForm': data.get('legalForms', [{}])[0].get('value', {}).get('value', ''),
-            'predecessor': data.get('predecessor', {}).get('value', ''),
-            'successor': data.get('successor', {}).get('value', ''),
-            'address': address.get('formatedAddress', ''),
-            'house_number': address.get('houseNumber', ''),
-            'street': address.get('street', ''),
-            'municipality': address.get('municipality', {}).get('value', ''),
-            'postalCode': address.get('postalCode', ''),
-            'country': address.get('country', {}).get('value', ''),
+            'id': data.get('id', ''),
+            'identifier': data.get('identifiers', [{}])[0].get('value', '') if data.get('identifiers') else '',
+            'fullName': data.get('fullNames', [{}])[0].get('value', '') if data.get('fullNames') else '',
+            'otherNames': ", ".join(name.get('value', '') for name in data.get('otherNames', [])) if data.get('otherNames') else '',
+            
+            # Safe extraction of legal form details with nested fallback
+            'legalForm': data.get('legalForms', [{}])[0].get('value', {}).get('value', '') if data.get('legalForms') else '',
+            
+            # Predecessor and successor fallback
+            'predecessor': data.get('predecessor', {}).get('value', '') if data.get('predecessor') else '',
+            'successor': data.get('successor', {}).get('value', '') if data.get('successor') else '',
+            
+            # Address and nested address fields
+            'address': data.get('addresses', [{}])[0].get('formatedAddress', '') if data.get('addresses') else '',
+            'house_number': data.get('addresses', [{}])[0].get('houseNumber', '') if data.get('addresses') else '',
+            'street': data.get('addresses', [{}])[0].get('street', '') if data.get('addresses') else '',
+            'municipality': data.get('addresses', [{}])[0].get('municipality', {}).get('value', '') if data.get('addresses') else '',
+            'postalCode': data.get('addresses', [{}])[0].get('postalCode', '') if data.get('addresses') else '',
+            'country': data.get('addresses', [{}])[0].get('country', {}).get('value', '') if data.get('addresses') else '',
+            
+            # Dates
             'establishmentDate': data.get('establishment', ''),
             'terminationDate': data.get('termination', '')
         }
@@ -83,18 +91,22 @@ with open(company_output_file, 'w', newline='', encoding='utf-8') as company_csv
             person_info = {
                 'company_id': company_id,
                 'relationship_type': relationship_type,
-                'name': person.get('personName', {}).get('givenName', ''),
-                'surname': person.get('personName', {}).get('familyName', ''),
-                'fullName': person.get('personName', {}).get('formatedName', ''),
+                'name': person.get('personName', {}).get('givenName', '') if person.get('personName') else '',
+                'surname': person.get('personName', {}).get('familyName', '') if person.get('personName') else '',
+                'fullName': person.get('personName', {}).get('formatedName', '') if person.get('personName') else '',
+                
+                # Address fields
                 'address': address.get('formatedAddress', ''),
                 'house_number': address.get('houseNumber', ''),
                 'street': address.get('street', ''),
-                'municipality': address.get('municipality', {}).get('value', ''),
+                'municipality': address.get('municipality', {}).get('value', '') if address.get('municipality') else '',
                 'postalCode': address.get('postalCode', ''),
-                'country': address.get('country', {}).get('value', ''),
-                'role': role,
-                'share_percentage': person.get('share', ''),
-                'deposit_value': person.get('deposit', ''),
+                'country': address.get('country', {}).get('value', '') if address.get('country') else '',
+                
+                # Role, share, deposit, and dates
+                'role': role or person.get('stakeholderType', {}).get('value', '') if person.get('stakeholderType') else '',
+                'share_percentage': person.get('share', '') if 'share' in person else '',
+                'deposit_value': person.get('deposit', '') if 'deposit' in person else '',
                 'start_date': person.get('validFrom', ''),
                 'end_date': person.get('validTo', '')
             }
@@ -102,7 +114,7 @@ with open(company_output_file, 'w', newline='', encoding='utf-8') as company_csv
 
         # Process statutory bodies
         for body in data.get('statutoryBodies', []):
-            extract_person_info(body, 'statutoryBody', body.get('stakeholderType', {}).get('value', ''))
+            extract_person_info(body, 'statutoryBody', body.get('stakeholderType', {}).get('value', '') if body.get('stakeholderType') else '')
 
         # Process shares
         for share in data.get('shares', []):
@@ -116,23 +128,23 @@ with open(company_output_file, 'w', newline='', encoding='utf-8') as company_csv
         for kuv_person in data.get('kuvPersonsInfo', []):
             extract_person_info(kuv_person, 'kuvPerson')
 
-    # Iterate through unique company IDs, fetch data, and save to CSVs
-    request_count = 0
-    for idx, company_id in enumerate(unique_ids, start=1):
-        # Apply rate limiting every 30 requests
-        # if request_count > 0 and request_count % 30 == 0:
-            # print("Rate limit: Pausing for 5 seconds...")
+# Iterate through unique company IDs, fetch data, and save to CSVs
+request_count = 0
+for idx, company_id in enumerate(unique_ids, start=1):
+    # Apply rate limiting every 30 requests
+    # if request_count > 0 and request_count % 30 == 0:
+        # print("Rate limit: Pausing for 5 seconds...")
 
-        # Fetch data from API
-        data = fetch_company_data(company_id)
-        if data:
-            # Save data for company and people
-            save_company_data(data)
-            save_people_data(data, company_id)
-            print(f"Processed company ID {company_id} ({idx}/{len(unique_ids)})")
+    # Fetch data from API
+    data = fetch_company_data(company_id)
+    if data:
+        # Save data for company and people
+        save_company_data(data)
+        save_people_data(data, company_id)
+        print(f"Processed company ID {company_id} ({idx}/{len(unique_ids)})")
 
-        # Increment request count
-        # request_count += 1
-        time.sleep(2)
+    # Increment request count
+    # request_count += 1
+    time.sleep(2)
 
 print("Data processing completed.")
