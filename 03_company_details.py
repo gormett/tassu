@@ -120,9 +120,8 @@ with open(company_output_file, 'w', newline='', encoding='utf-8') as company_csv
     request_count = 0
     for idx, company_id in enumerate(unique_ids, start=1):
         # Apply rate limiting every 30 requests
-        if request_count > 0 and request_count % 30 == 0:
-            print("Rate limit: Pausing for 5 seconds...")
-            time.sleep(5)
+        # if request_count > 0 and request_count % 30 == 0:
+            # print("Rate limit: Pausing for 5 seconds...")
 
         # Fetch data from API
         data = fetch_company_data(company_id)
@@ -133,6 +132,7 @@ with open(company_output_file, 'w', newline='', encoding='utf-8') as company_csv
             print(f"Processed company ID {company_id} ({idx}/{len(unique_ids)})")
 
         # Increment request count
-        request_count += 1
+        # request_count += 1
+        time.sleep(2)
 
 print("Data processing completed.")
