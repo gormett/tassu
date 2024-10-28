@@ -128,23 +128,16 @@ with open(company_output_file, 'w', newline='', encoding='utf-8') as company_csv
         for kuv_person in data.get('kuvPersonsInfo', []):
             extract_person_info(kuv_person, 'kuvPerson')
 
-# Iterate through unique company IDs, fetch data, and save to CSVs
-request_count = 0
-for idx, company_id in enumerate(unique_ids, start=1):
-    # Apply rate limiting every 30 requests
-    # if request_count > 0 and request_count % 30 == 0:
-        # print("Rate limit: Pausing for 5 seconds...")
+    # Iterate through unique company IDs, fetch data, and save to CSVs
+    for idx, company_id in enumerate(unique_ids, start=1):
+        # Fetch data from API
+        data = fetch_company_data(company_id)
+        if data:
+            # Save data for company and people
+            save_company_data(data)
+            save_people_data(data, company_id)
+            print(f"Processed company ID {company_id} ({idx}/{len(unique_ids)})")
 
-    # Fetch data from API
-    data = fetch_company_data(company_id)
-    if data:
-        # Save data for company and people
-        save_company_data(data)
-        save_people_data(data, company_id)
-        print(f"Processed company ID {company_id} ({idx}/{len(unique_ids)})")
-
-    # Increment request count
-    # request_count += 1
-    time.sleep(2)
+        time.sleep(2)
 
 print("Data processing completed.")
