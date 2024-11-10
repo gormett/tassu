@@ -6,3 +6,10 @@
 !*.py
 !*.md
 !obce_VT.csv
+!output/*
+!statistics.sk/*
+!statistics.sk
+!output
+!output/statistics
+!output/statistics/*
+05_missing_company_details.py

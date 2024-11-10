@@ -20,13 +20,13 @@ with open(input_file, 'r', encoding='utf-8') as csvfile:
 # Define headers for company and people files
 company_headers = [
     'id', 'identifier', 'fullName', 'otherNames', 'legalForm', 'predecessor', 'successor',
-    'address', 'house_number', 'street', 'municipality', 'postalCode', 'country',
+    'address', 'buildingNumber', 'street', 'municipality', 'postalCodes', 'country',
     'establishmentDate', 'terminationDate'
 ]
 people_headers = [
-    'company_id', 'relationship_type', 'name', 'surname', 'fullName', 'birthdate', 'address',
-    'house_number', 'street', 'municipality', 'postalCode', 'country', 'role', 'share_percentage',
-    'deposit_value', 'start_date', 'end_date'
+    'company_id', 'relationship_type', 'prefixes', 'name', 'surname', 'postfixes', 'fullName',
+    'birthdate', 'address', 'buildingNumber', 'street', 'municipality', 'postalCodes', 'country',
+    'role', 'share_percentage', 'deposit_value', 'start_date', 'end_date'
 ]
 
 # Open both files for continuous writing
@@ -77,10 +77,10 @@ def save_company_data(data):
         
         # Address and nested address fields
         'address': data.get('addresses', [{}])[0].get('formatedAddress', '') if data.get('addresses') else '',
-        'house_number': data.get('addresses', [{}])[0].get('houseNumber', '') if data.get('addresses') else '',
+        'buildingNumber': data.get('addresses', [{}])[0].get('buildingNumber', '') if data.get('addresses') else '',
         'street': data.get('addresses', [{}])[0].get('street', '') if data.get('addresses') else '',
         'municipality': data.get('addresses', [{}])[0].get('municipality', {}).get('value', '') if data.get('addresses') else '',
-        'postalCode': data.get('addresses', [{}])[0].get('postalCode', '') if data.get('addresses') else '',
+        'postalCodes': data.get('addresses', [{}])[0].get('postalCodes', '') if data.get('addresses') else '',
         'country': data.get('addresses', [{}])[0].get('country', {}).get('value', '') if data.get('addresses') else '',
         
         # Dates
@@ -97,18 +97,19 @@ def save_people_data(data, company_id):
         person_info = {
             'company_id': company_id,
             'relationship_type': relationship_type,
-            'name': person.get('personName', {}).get('givenName', '') if person.get('personName') else '',
-            'surname': person.get('personName', {}).get('familyName', '') if person.get('personName') else '',
+            'prefixes': ", ".join(prefix.get('value', '') for prefix in person.get('personName', {}).get('prefixes', [])) if person.get('personName') else '',
+            'name': " ".join(person.get('personName', {}).get('givenNames', [])) if person.get('personName') else '',
+            'surname': " ".join(person.get('personName', {}).get('familyNames', [])) if person.get('personName') else '',
+            'postfixes': ", ".join(postfix.get('value', '') for postfix in person.get('personName', {}).get('postfixes', [])) if person.get('personName') else '',
             'fullName': person.get('personName', {}).get('formatedName', '') if person.get('personName') else '',
             'birthdate': person.get('birthDate', '') if person.get('birthDate') else '',
             # Address fields
             'address': address.get('formatedAddress', ''),
-            'house_number': address.get('houseNumber', ''),
+            'buildingNumber': address.get('buildingNumber', ''),
             'street': address.get('street', ''),
             'municipality': address.get('municipality', {}).get('value', '') if address.get('municipality') else '',
-            'postalCode': address.get('postalCode', ''),
+            'postalCodes': ", ".join(address.get('postalCodes', [])) if 'postalCodes' in address else '',
             'country': address.get('country', {}).get('value', '') if address.get('country') else '',
-            
             # Role, share, deposit, and dates
             'role': role or person.get('stakeholderType', {}).get('value', '') if person.get('stakeholderType') else '',
             'share_percentage': person.get('share', '') if 'share' in person else '',
